@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODF Port Manager</title>
+    
+    <!-- Load CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Load React from CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Load XLSX for Excel import/export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+
+    <!-- Load our JavaScript -->
+    <script src="app.js" defer></script>
+</head>
+<body class="odf">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <img class="logo" src="SLTMobitel_Logo.svg.png" alt="SLT Mobitel">
+            <div>
+                <h1 id="odfTitle">ODF Port Manager</h1>
+                <div id="odfSubtitle" class="nav-subtitle">Region: Unknown | Sub ODF: Unknown</div>
+            </div>
+        </div>
+        <div class="nav-controls">
+            <a class="btn btn-outline" href="index.html">Back to Regions</a>
+            <button id="exportBtn" class="btn btn-outline">Export</button>
+            <button id="importBtn" class="btn btn-outline">Import</button>
+        </div>
+    </nav>
+
+    <!-- Main App Container -->
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>Port Grid</h3>
+                <span id="portCount" class="badge">96 Ports</span>
+            </div>
+            
+            <div class="controls">
+                <button id="addPort" class="btn btn-primary">+ Add Port</button>
+                <button id="removePort" class="btn btn-secondary">- Remove Port</button>
+            </div>
+            
+            <!-- Port Grid -->
+            <div id="portGrid" class="port-grid">
+                <!-- Ports will be generated here -->
+            </div>
+            
+            <!-- Legend -->
+            <div class="legend">
+                <h4>Status Legend</h4>
+                <div class="legend-item">
+                    <span class="dot active"></span> Active
+                </div>
+                <div class="legend-item">
+                    <span class="dot inactive"></span> Inactive
+                </div>
+                <div class="legend-item">
+                    <span class="dot faulty"></span> Faulty
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div id="portDetails">
+                <!-- Port details will be shown here -->
+                <div class="empty-state">
+                    <div class="empty-icon">&#128225;</div>
+                    <h3>No Port Selected</h3>
+                    <p>Click on a port from the grid to view and edit its details</p>
+                </div>
+            </div>
+            <div id="fieldControls" class="field-controls" hidden>
+                <button id="addFieldBtn" class="btn btn-primary">+ Add Field</button>
+                <button id="removeFieldBtn" class="btn btn-secondary">- Remove Field</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Database Status -->
+    <footer class="footer">
+        <div class="db-status">
+            <span class="status-dot connected"></span>
+            <span>Local Storage: Connected</span>
+            <span id="lastSaveTime" class="small-text"></span>
+        </div>
+        <div class="db-actions">
+            <button id="saveBtn" class="btn btn-success">Save Changes</button>
+        </div>
+    </footer>
+    <footer class="page-footer">© 2026 SLT Mobitel Pvt Ltd. All Right Reserved</footer>
+
+    <!-- File Input for Import (hidden) -->
+    <input type="file" id="fileInput" accept=".json,.xlsx,.xls" style="display: none;">
+</body>
+</html>
