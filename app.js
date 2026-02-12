@@ -71,13 +71,14 @@ class DatabaseService {
         const headers = [
             'ID',
             'Label',
-            'Status',
-            'Service',
+            'Port Status',
+            'Customer',
+            'CCT Number',
+            'CEA/OLT port',
+            'Customer Location',
+            'Customer GPS',
+            'Live Branching joint',
             'OTDR Distance',
-            'DAB',
-            'Port',
-            'Branching Joint',
-            'CX Location',
             'Last Modified',
             'Notes',
             ...extraFieldDefs
@@ -85,13 +86,14 @@ class DatabaseService {
         const rows = AppState.ports.map((port) => ({
             'ID': port.id,
             'Label': port.label,
-            'Status': port.status,
-            'Service': port.destination,
-            'OTDR Distance': port.otdrDistance,
-            'DAB': port.fiberType,
-            'Port': port.connectorType,
-            'Branching Joint': port.branchingJoint,
-            'CX Location': port.cxLocation,
+            'Port Status': port.status,
+            'Customer': port.destination,
+            'CCT Number': port.otdrDistance,
+            'CEA/OLT port': port.fiberType,
+            'Customer Location': port.connectorType,
+            'Customer GPS': port.branchingJoint,
+            'Live Branching joint': port.cxLocation,
+            'OTDR Distance': port.otdrDistanceValue || '',
             'Last Modified': port.lastMaintained,
             'Notes': port.notes,
             ...extraFieldDefs.reduce((acc, label, index) => {
@@ -230,19 +232,21 @@ class DatabaseService {
 
         const port = AppState.createDefaultPort(index);
 
-        const statusRaw = String(pick(['status']) || '').trim().toUpperCase();
+        const statusRaw = String(pick(['status', 'port status', 'portstatus']) || '').trim().toUpperCase();
         const allowed = new Set(['ACTIVE', 'INACTIVE', 'FAULTY']);
         if (allowed.has(statusRaw)) {
             port.status = statusRaw;
         }
 
         const toText = (value) => (value === null || value === undefined) ? '' : String(value);
-        port.destination = toText(pick(['service', 'destination', 'dest']));
-        port.otdrDistance = toText(pick(['otdr distance', 'otdrdistance', 'otdr']));
-        port.fiberType = toText(pick(['dab', 'fiber type', 'fibertype', 'fiber']));
-        port.connectorType = toText(pick(['port', 'connector type', 'connectortype', 'connector']));
-        port.branchingJoint = toText(pick(['branching joint', 'branchingjoint', 'branch joint']));
-        port.cxLocation = toText(pick(['cx location', 'cxlocation', 'customer location', 'customerlocation']));
+        const importedOtdr = toText(pick(['otdr distance', 'otdrdistance', 'otdr', 'actual otdr distance', 'actualotdrdistance']));
+        port.destination = toText(pick(['customer', 'service', 'destination', 'dest']));
+        port.otdrDistance = toText(pick(['cct number', 'cctnumber'])) || importedOtdr;
+        port.fiberType = toText(pick(['cea/olt port', 'ceaoltport', 'dab', 'fiber type', 'fibertype', 'fiber']));
+        port.connectorType = toText(pick(['customer location', 'customerlocation', 'port', 'connector type', 'connectortype', 'connector']));
+        port.branchingJoint = toText(pick(['customer gps', 'customergps', 'branching joint', 'branchingjoint', 'branch joint']));
+        port.cxLocation = toText(pick(['live branching joint', 'livebranchingjoint', 'cx location', 'cxlocation']));
+        port.otdrDistanceValue = importedOtdr;
         port.notes = toText(pick(['notes', 'note', 'remarks', 'comment']));
 
         const customFields = {};
@@ -268,21 +272,28 @@ class DatabaseService {
             'id',
             'label',
             'status',
+            'portstatus',
+            'customer',
             'service',
             'destination',
             'dest',
+            'cctnumber',
             'otdrdistance',
             'otdr',
+            'actualotdrdistance',
+            'ceaoltport',
             'dab',
             'fibertype',
             'fiber',
+            'customerlocation',
             'port',
             'connectortype',
             'connector',
+            'customergps',
             'branchingjoint',
             'branchjoint',
+            'livebranchingjoint',
             'cxlocation',
-            'customerlocation',
             'lastmodified',
             'lastmaintained',
             'lastmaintenancedate',
@@ -483,6 +494,7 @@ const AppState = {
             connectorType: 'LC/UPC',
             destination: '',
             otdrDistance: '',
+            otdrDistanceValue: '',
             lastMaintained: new Date().toISOString().split('T')[0],
             branchingJoint: '',
             cxLocation: '',
@@ -506,6 +518,7 @@ const AppState = {
                 ...rest,
                 id: index + 1,
                 label: `PORT-${(index + 1).toString().padStart(3, '0')}`,
+                otdrDistanceValue: rest && typeof rest.otdrDistanceValue === 'string' ? rest.otdrDistanceValue : '',
                 customFields
             };
 
@@ -649,7 +662,7 @@ class UIRenderer {
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-label">Operation Status</div>
+                    <div class="detail-label">Port Status</div>
                     <div class="detail-value">
                         ${isEditing ? 
                             `<select id="statusInput">
@@ -663,7 +676,7 @@ class UIRenderer {
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-label">Service</div>
+                    <div class="detail-label">Customer</div>
                     <div class="detail-value">
                         ${isEditing ? 
                             `<input type="text" id="destinationInput" value="${port.destination}">` :
@@ -673,7 +686,7 @@ class UIRenderer {
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-label">OTDR Distance</div>
+                    <div class="detail-label">CCT Number</div>
                     <div class="detail-value">
                         ${isEditing ? 
                             `<input type="text" id="otdrDistanceInput" value="${port.otdrDistance}">` :
@@ -683,7 +696,7 @@ class UIRenderer {
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-label">DAB</div>
+                    <div class="detail-label">CEA/OLT port</div>
                     <div class="detail-value">
                         ${isEditing ? 
                             `<input type="text" id="fiberTypeInput" value="${port.fiberType}">` :
@@ -693,7 +706,7 @@ class UIRenderer {
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-label">Port</div>
+                    <div class="detail-label">Customer Location</div>
                     <div class="detail-value">
                         ${isEditing ? 
                             `<input type="text" id="connectorInput" value="${port.connectorType}">` :
@@ -703,7 +716,7 @@ class UIRenderer {
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-label">Branching Joint</div>
+                    <div class="detail-label">Customer GPS</div>
                     <div class="detail-value">
                         ${isEditing ? 
                             `<input type="text" id="branchingJointInput" value="${port.branchingJoint}">` :
@@ -713,11 +726,21 @@ class UIRenderer {
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-label">CX Location</div>
+                    <div class="detail-label">Live Branching joint</div>
                     <div class="detail-value">
                         ${isEditing ? 
                             `<input type="text" id="cxLocationInput" value="${port.cxLocation}">` :
                             `<span class="readonly-text">${port.cxLocation}</span>`
+                        }
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">OTDR Distance</div>
+                    <div class="detail-value">
+                        ${isEditing ? 
+                            `<input type="text" id="otdrDistanceValueInput" value="${port.otdrDistanceValue || ''}">` :
+                            `<span class="readonly-text">${port.otdrDistanceValue || ''}</span>`
                         }
                     </div>
                 </div>
@@ -985,6 +1008,7 @@ class UIRenderer {
             connectorType: document.getElementById('connectorInput').value,
             branchingJoint: document.getElementById('branchingJointInput').value,
             cxLocation: document.getElementById('cxLocationInput').value,
+            otdrDistanceValue: document.getElementById('otdrDistanceValueInput').value,
             // Always stamp current date when saving edits
             lastMaintained: today,
             notes: document.getElementById('notesInput').value,
@@ -1001,6 +1025,7 @@ class UIRenderer {
             'connectorInput',
             'branchingJointInput',
             'cxLocationInput',
+            'otdrDistanceValueInput',
             'notesInput'
         ];
 
