@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODF Sub Regions</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script defer>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const region = params.get('region') || 'Unknown Region';
+            const titleEl = document.getElementById('subregionsTitle');
+            titleEl.textContent = region;
+
+            const allSections = document.querySelectorAll('[data-region]');
+            let shown = false;
+            let activeSection = null;
+            allSections.forEach(section => {
+                if (section.dataset.region === region) {
+                    section.style.display = 'flex';
+                    shown = true;
+                    activeSection = section;
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+
+            if (!shown) {
+                const grid = document.querySelector('.regions-grid');
+                if (grid) {
+                    const section = document.createElement('div');
+                    section.className = 'region-card subregion-card';
+                    section.dataset.region = region;
+                    section.style.display = 'flex';
+                    section.innerHTML = `
+                        <div class="region-header"><h2>${region}</h2></div>
+                        <div class="region-actions"></div>
+                    `;
+                    grid.appendChild(section);
+                    activeSection = section;
+                }
+            }
+
+            if (!activeSection) {
+                const empty = document.getElementById('subregionsEmpty');
+                if (empty) empty.style.display = 'block';
+                return;
+            }
+
+            const apiGet = async (url) => {
+                const res = await fetch(url);
+                return res;
+            };
+
+            const apiPost = async (url, payload) => {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                return res;
+            };
+
+            const actionsContainer = activeSection.querySelector('.region-actions');
+            if (!actionsContainer) {
+                const empty = document.getElementById('subregionsEmpty');
+                if (empty) empty.style.display = 'block';
+                return;
+            }
+
+
+            const loadCustomSubregions = async () => {
+                try {
+                    const res = await apiGet(`/api/subregions?region=${encodeURIComponent(region)}`);
+                    if (!res.ok) return [];
+                    const data = await res.json();
+                    return Array.isArray(data.items) ? data.items : [];
+                } catch {
+                    return [];
+                }
+            };
+
+            const saveCustomSubregions = async (items) => {
+                const res = await apiPost('/api/subregions', { region, items });
+                if (!res.ok) {
+                    throw new Error('Failed to save sub regions');
+                }
+                return res;
+            };
+
+            let customSubregions = await loadCustomSubregions();
+
+            const addBtn = document.getElementById('addSubregionBtn');
+            const deleteBtn = document.getElementById('deleteSubregionBtn');
+            const renameBtn = document.getElementById('renameSubregionBtn');
+            const nameInput = document.getElementById('subregionNameInput');
+
+            if (!addBtn || !deleteBtn || !renameBtn || !nameInput) {
+                return;
+            }
+
+            const getInputValue = () => nameInput.value.trim();
+
+            const renderCustomButtons = async () => {
+                actionsContainer.querySelectorAll('[data-manual="true"]').forEach(btn => btn.remove());
+                for (const name of customSubregions) {
+                    const link = document.createElement('a');
+                    link.className = 'btn btn-primary';
+                    link.dataset.manual = 'true';
+                    link.textContent = name;
+                    link.href = `odf.html?region=${encodeURIComponent(region)}&sub=${encodeURIComponent(name)}`;
+                    actionsContainer.appendChild(link);
+                }
+            };
+
+            await renderCustomButtons();
+
+            addBtn.addEventListener('click', async () => {
+                const name = getInputValue();
+                if (!name) return;
+                if (!customSubregions.includes(name)) {
+                    customSubregions.push(name);
+                    await saveCustomSubregions(customSubregions);
+                    await renderCustomButtons();
+                }
+                nameInput.value = '';
+                nameInput.focus();
+            });
+
+            deleteBtn.addEventListener('click', async () => {
+                const name = getInputValue();
+                if (!name) return;
+                const next = customSubregions.filter(item => item !== name);
+                if (next.length !== customSubregions.length) {
+                    customSubregions = next;
+                    await saveCustomSubregions(customSubregions);
+                    await renderCustomButtons();
+                }
+                nameInput.value = '';
+                nameInput.focus();
+            });
+
+            renameBtn.addEventListener('click', async () => {
+                const currentName = getInputValue();
+                if (!currentName) return;
+                if (!customSubregions.includes(currentName)) return;
+                const newName = prompt('Rename sub region to:', currentName);
+                if (!newName) return;
+                const trimmed = newName.trim();
+                if (!trimmed) return;
+                if (customSubregions.includes(trimmed)) return;
+                // Move any saved ODF data to the new key so data stays with the renamed subregion
+                try {
+                    const res = await apiGet(`/api/odf?region=${encodeURIComponent(region)}&sub=${encodeURIComponent(currentName)}`);
+                    if (res.ok) {
+                        const existing = await res.json();
+                        await apiPost('/api/odf', {
+                            region,
+                            sub: trimmed,
+                            ports: Array.isArray(existing.ports) ? existing.ports : [],
+                            displayCount: Number.isFinite(existing.displayCount) ? existing.displayCount : 96
+                        });
+                        await fetch(`/api/odf?region=${encodeURIComponent(region)}&sub=${encodeURIComponent(currentName)}`, { method: 'DELETE' });
+                    }
+                } catch {
+                    // Ignore rename sync errors
+                }
+                customSubregions = customSubregions.map(item => (item === currentName ? trimmed : item));
+                await saveCustomSubregions(customSubregions);
+                await renderCustomButtons();
+                nameInput.value = '';
+                nameInput.focus();
+            });
+        });
+    </script>
+</head>
+<body class="landing">
+    <header class="landing-hero">
+        <div class="landing-brand">
+            <img class="landing-logo" src="SLTMobitel_Logo.svg.png" alt="SLT Mobitel">
+            <div>
+                <h1 id="subregionsTitle">Region</h1>
+                <p>Select a sub ODF to open its port manager.</p>
+            </div>
+        </div>
+        <div class="nav-controls">
+            <a class="btn btn-outline" href="index.html">Back to Regions</a>
+            
+        </div>
+    </header>
+
+    <main class="landing-content">
+        <div class="subregion-controls">
+            <input id="subregionNameInput" class="input" type="text" placeholder="Sub ODF name (e.g., KLY-DMB-DFA-500)">
+            <button id="addSubregionBtn" class="btn btn-primary">+ Add Sub Region</button>
+            <button id="deleteSubregionBtn" class="btn btn-danger">- Delete Sub Region</button>
+            <button id="renameSubregionBtn" class="btn btn-secondary">Rename Sub Region</button>
+        </div>
+        <section class="regions-grid">
+            <!-- Alawwa (AB) -->
+            <div class="region-card subregion-card" data-region="Alawwa (AB)">
+                <div class="region-header"><h2>Alawwa (AB)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Dambadeniya (DMB) -->
+            <div class="region-card subregion-card" data-region="Dambadeniya (DMB)">
+                <div class="region-header"><h2>Dambadeniya (DMB)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Galgamuwa (GGM) -->
+            <div class="region-card subregion-card" data-region="Galgamuwa (GGM)">
+                <div class="region-header"><h2>Galgamuwa (GGM)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Giriulla (GU) -->
+            <div class="region-card subregion-card" data-region="Giriulla (GU)">
+                <div class="region-header"><h2>Giriulla (GU)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Hettipola (HZ) -->
+            <div class="region-card subregion-card" data-region="Hettipola (HZ)">
+                <div class="region-header"><h2>Hettipola (HZ)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Ibbagamuwa (IBG) -->
+            <div class="region-card subregion-card" data-region="Ibbagamuwa (IBG)">
+                <div class="region-header"><h2>Ibbagamuwa (IBG)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Kurunegala (KG) -->
+            <div class="region-card subregion-card" data-region="Kurunegala (KG)">
+                <div class="region-header"><h2>Kurunegala (KG)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Kuliyapitiya (KLY) -->
+            <div class="region-card subregion-card" data-region="Kuliyapitiya (KLY)">
+                <div class="region-header"><h2>Kuliyapitiya (KLY)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Mawathagama (MG) -->
+            <div class="region-card subregion-card" data-region="Mawathagama (MG)">
+                <div class="region-header"><h2>Mawathagama (MG)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Mahawa (MQ) -->
+            <div class="region-card subregion-card" data-region="Mahawa (MQ)">
+                <div class="region-header"><h2>Mahawa (MQ)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Narammala (NC) -->
+            <div class="region-card subregion-card" data-region="Narammala (NC)">
+                <div class="region-header"><h2>Narammala (NC)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Nikadalupotha (NDP) -->
+            <div class="region-card subregion-card" data-region="Nikadalupotha (NDP)">
+                <div class="region-header"><h2>Nikadalupotha (NDP)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Nikaweratiya (NK) -->
+            <div class="region-card subregion-card" data-region="Nikaweratiya (NK)">
+                <div class="region-header"><h2>Nikaweratiya (NK)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Pannala (PL) -->
+            <div class="region-card subregion-card" data-region="Pannala (PL)">
+                <div class="region-header"><h2>Pannala (PL)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Pothuhera (PTR) -->
+            <div class="region-card subregion-card" data-region="Pothuhera (PTR)">
+                <div class="region-header"><h2>Pothuhera (PTR)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Polgahawela (PW) -->
+            <div class="region-card subregion-card" data-region="Polgahawela (PW)">
+                <div class="region-header"><h2>Polgahawela (PW)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Ridigama (RGM) -->
+            <div class="region-card subregion-card" data-region="Ridigama (RGM)">
+                <div class="region-header"><h2>Ridigama (RGM)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Thulhiriya Cabin -->
+            <div class="region-card subregion-card" data-region="Thulhiriya Cabin">
+                <div class="region-header"><h2>Thulhiriya Cabin</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+
+            <!-- Wariyapola (WP) -->
+            <div class="region-card subregion-card" data-region="Wariyapola (WP)">
+                <div class="region-header"><h2>Wariyapola (WP)</h2></div>
+                <div class="region-actions">
+                </div>
+            </div>
+        </section>
+
+        <div id="subregionsEmpty" class="empty-state" style="display:none;">
+            <h3>No sub regions found for this region.</h3>
+            <p>Edit `subregions.html` to add them.</p>
+        </div>
+
+    </main>
+    <footer class="page-footer">© 2026 SLT Mobitel Pvt Ltd. All Right Reserved</footer>
+</body>
+</html>
