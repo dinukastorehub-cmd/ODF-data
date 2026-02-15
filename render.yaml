@@ -9,12 +9,12 @@ services:
       - key: NODE_VERSION
         value: "18"
       - key: DB_HOST
-        sync: false
+        sync: localhost
       - key: DB_PORT
         value: "3306"
       - key: DB_USER
-        sync: false
+        sync: odf_user
       - key: DB_PASSWORD
-        sync: false
+        sync: Dinuka@2001
       - key: DB_NAME
-        sync: false
+        sync: odf_manager
