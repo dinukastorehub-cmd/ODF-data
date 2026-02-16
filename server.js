@@ -13,7 +13,7 @@ const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || 'odf_user',
-  password: process.env.DB_PASSWORD || '',
+  password: process.env.DB_PASSWORD || 'Dinuka@2001',
   database: process.env.DB_NAME || 'odf_manager',
   waitForConnections: true,
   connectionLimit: 10,
@@ -606,4 +606,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`ODF app running at http://localhost:${PORT}`);
+
 });
