@@ -10,7 +10,7 @@ const PORT = Number(process.env.PORT) || 5500;
 
 // MySQL connection pool – adjust credentials if needed
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || '127.0.0.1',
   port: Number(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || 'odf_user',
   password: process.env.DB_PASSWORD || 'Dinuka@2001',
@@ -608,3 +608,4 @@ server.listen(PORT, () => {
   console.log(`ODF app running at http://localhost:${PORT}`);
 
 });
+
