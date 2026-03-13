@@ -12,8 +12,8 @@ const PORT = Number(process.env.PORT) || 5500;
 const pool = mysql.createPool({
   host: process.env.DB_HOST || '127.0.0.1',
   port: Number(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || 'odf_user',
-  password: process.env.DB_PASSWORD || 'Dinuka@2001',
+  user: process.env.DB_USER || 'Username',
+  password: process.env.DB_PASSWORD || 'Password',
   database: process.env.DB_NAME || 'odf_manager',
   waitForConnections: true,
   connectionLimit: 10,
@@ -608,4 +608,5 @@ server.listen(PORT, () => {
   console.log(`ODF app running at http://localhost:${PORT}`);
 
 });
+
 
